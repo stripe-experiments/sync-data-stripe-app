@@ -2,11 +2,13 @@
  * Database Provisioning Endpoint
  *
  * POST /api/db/provision - Provision a new Supabase database for a Stripe account.
- *   Body: { account_id: string, livemode?: boolean }
+ *   Body: { user_id: string, account_id: string, livemode?: boolean }
+ *   Requires Stripe-Signature header for authentication.
  *   Idempotent - returns current status if already provisioned.
  *
  * DELETE /api/db/provision - Deprovision (delete) the Supabase project for a Stripe account.
- *   Query: ?account_id=acct_xxx&livemode=true|false
+ *   Query: ?user_id=usr_xxx&account_id=acct_xxx&livemode=true|false
+ *   Requires Stripe-Signature header for authentication.
  *   Only deletes local DB row after Supabase project is successfully deleted.
  */
 
@@ -19,6 +21,12 @@ import {
 } from '../../lib/provisioned-db';
 import { startProvisioning, deleteSupabaseProject } from '../../lib/supabase-provisioning';
 import type { DbStatusResponse } from '../../lib/provisioning-types';
+import {
+  requireStripeAppSignature,
+  StripeAppSignatureError,
+  redactAccountId,
+  redactUserId,
+} from '../../lib/stripe-app-signature';
 
 function headerValue(req: VercelRequest, name: string): string | undefined {
   const value = req.headers[name.toLowerCase()];
@@ -33,13 +41,6 @@ function requestId(req: VercelRequest): string | undefined {
   );
 }
 
-function redactStripeAccountId(accountId: string): string {
-  if (!accountId) return 'unknown';
-  const suffix = accountId.slice(-6);
-  if (accountId.startsWith('acct_')) return `acct_…${suffix}`;
-  return `…${suffix}`;
-}
-
 /**
  * Handler for database provisioning endpoint
  */
@@ -47,10 +48,10 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ): Promise<void> {
-  // Set CORS headers for Stripe App
+  // Set CORS headers for Stripe App (UI extensions run with null origin)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Stripe-Signature');
 
   // Handle preflight
   if (req.method === 'OPTIONS') {
@@ -70,49 +71,54 @@ export default async function handler(
   }
 
   try {
-    // Extract parameters from body
     const rid = requestId(req);
-    const hasAuthHeader = Boolean(headerValue(req, 'authorization'));
-    const contentType = headerValue(req, 'content-type');
-
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const accountId = body?.account_id;
     const livemode = body?.livemode === true;
 
-    if (!accountId || typeof accountId !== 'string') {
-      console.warn(
-        `[db/provision] bad_request ${JSON.stringify({
-          requestId: rid,
-          method: req.method,
-          reason: 'missing_or_invalid_account_id',
-          bodyType: typeof req.body,
-          contentType,
-          hasAuthHeader,
-        })}`
-      );
-      res.status(400).json({ error: 'Missing required parameter: account_id' });
-      return;
+    // Verify Stripe App signature and extract verified identifiers
+    // This cryptographically ensures the request is from the signed-in Dashboard user
+    let verified;
+    try {
+      verified = await requireStripeAppSignature(req);
+    } catch (error) {
+      if (error instanceof StripeAppSignatureError) {
+        console.warn(
+          `[db/provision] signature_error ${JSON.stringify({
+            requestId: rid,
+            method: req.method,
+            statusCode: error.statusCode,
+            message: error.message,
+          })}`
+        );
+        res.status(error.statusCode).json({
+          error: 'Unauthorized',
+          message: error.message,
+        });
+        return;
+      }
+      throw error;
     }
+
+    // Use the VERIFIED account_id from the signature (not from client input)
+    const accountId = verified.accountId;
 
     console.log(
       `[db/provision] request ${JSON.stringify({
         requestId: rid,
         method: req.method,
-        account: redactStripeAccountId(accountId),
-        livemodeParsed: livemode,
-        bodyLivemodeType: typeof body?.livemode,
-        contentType,
-        hasAuthHeader,
+        user: redactUserId(verified.userId),
+        account: redactAccountId(accountId),
+        livemode,
       })}`
     );
 
-    // Verify OAuth connection
+    // Verify OAuth connection exists for this account
     const auth = await verifyOAuthConnection(accountId, livemode);
     if (!auth.authorized) {
       console.warn(
-        `[db/provision] unauthorized ${JSON.stringify({
+        `[db/provision] oauth_missing ${JSON.stringify({
           requestId: rid,
-          account: redactStripeAccountId(accountId),
+          account: redactAccountId(accountId),
           requestedLivemode: livemode,
           authError: auth.error,
         })}`
@@ -130,11 +136,11 @@ export default async function handler(
     if (existingDb) {
       // If in error state, delete and allow retry
       if (existingDb.install_status === 'error') {
-        console.log(`[provision] Deleting failed record for ${accountId} to allow retry`);
+        console.log(`[provision] Deleting failed record for ${redactAccountId(accountId)} to allow retry`);
         await deleteProvisionedDb(accountId);
       } else {
         // Return current status (idempotent)
-        console.log(`[provision] Returning existing status for ${accountId}: ${existingDb.install_status}`);
+        console.log(`[provision] Returning existing status for ${redactAccountId(accountId)}: ${existingDb.install_status}`);
         const response: DbStatusResponse = {
           status: existingDb.install_status,
           step: existingDb.install_step,
@@ -149,7 +155,7 @@ export default async function handler(
     }
 
     // Start provisioning
-    console.log(`[provision] Starting provisioning for ${accountId}`);
+    console.log(`[provision] Starting provisioning for ${redactAccountId(accountId)}`);
     const { projectRef } = await startProvisioning(accountId, livemode);
 
     // Return pending status
@@ -180,6 +186,7 @@ export default async function handler(
 /**
  * Handle DELETE /api/db/provision
  * Deprovisions (deletes) the Supabase project for a Stripe account.
+ * Requires Stripe-Signature header for authentication.
  * Only deletes the local DB row after Supabase confirms deletion (2xx).
  */
 async function handleDelete(
@@ -187,40 +194,52 @@ async function handleDelete(
   res: VercelResponse
 ): Promise<void> {
   const rid = requestId(req);
+  const livemodeParam = req.query.livemode;
+  const livemode = livemodeParam === 'true';
 
   try {
-    // Parse query parameters (DELETE bodies are unreliable)
-    const accountId = req.query.account_id;
-    const livemodeParam = req.query.livemode;
-
-    if (!accountId || typeof accountId !== 'string') {
-      console.warn(
-        `[db/provision DELETE] bad_request ${JSON.stringify({
-          requestId: rid,
-          reason: 'missing_or_invalid_account_id',
-        })}`
-      );
-      res.status(400).json({ error: 'Missing required query parameter: account_id' });
-      return;
+    // Verify Stripe App signature and extract verified identifiers
+    // This cryptographically ensures the request is from the signed-in Dashboard user
+    let verified;
+    try {
+      verified = await requireStripeAppSignature(req);
+    } catch (error) {
+      if (error instanceof StripeAppSignatureError) {
+        console.warn(
+          `[db/provision DELETE] signature_error ${JSON.stringify({
+            requestId: rid,
+            statusCode: error.statusCode,
+            message: error.message,
+          })}`
+        );
+        res.status(error.statusCode).json({
+          error: 'Unauthorized',
+          message: error.message,
+        });
+        return;
+      }
+      throw error;
     }
 
-    const livemode = livemodeParam === 'true';
+    // Use the VERIFIED account_id from the signature (not from client input)
+    const accountId = verified.accountId;
 
     console.log(
       `[db/provision DELETE] request ${JSON.stringify({
         requestId: rid,
-        account: redactStripeAccountId(accountId),
+        user: redactUserId(verified.userId),
+        account: redactAccountId(accountId),
         livemode,
       })}`
     );
 
-    // Verify OAuth connection
+    // Verify OAuth connection exists for this account
     const auth = await verifyOAuthConnection(accountId, livemode);
     if (!auth.authorized) {
       console.warn(
-        `[db/provision DELETE] unauthorized ${JSON.stringify({
+        `[db/provision DELETE] oauth_missing ${JSON.stringify({
           requestId: rid,
-          account: redactStripeAccountId(accountId),
+          account: redactAccountId(accountId),
           authError: auth.error,
         })}`
       );
@@ -261,7 +280,7 @@ async function handleDelete(
       console.log(
         `[db/provision DELETE] success ${JSON.stringify({
           requestId: rid,
-          account: redactStripeAccountId(accountId),
+          account: redactAccountId(accountId),
           projectRef,
         })}`
       );
@@ -273,7 +292,7 @@ async function handleDelete(
       console.warn(
         `[db/provision DELETE] lock_conflict ${JSON.stringify({
           requestId: rid,
-          account: redactStripeAccountId(accountId),
+          account: redactAccountId(accountId),
         })}`
       );
       res.status(409).json({

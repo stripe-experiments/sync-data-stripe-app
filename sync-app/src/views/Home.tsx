@@ -15,7 +15,7 @@ import {
   Link,
 } from '@stripe/ui-extension-sdk/ui';
 import type { ExtensionContextValue } from '@stripe/ui-extension-sdk/context';
-import { clipboardWriteText } from '@stripe/ui-extension-sdk/utils';
+import { clipboardWriteText, fetchStripeSignature } from '@stripe/ui-extension-sdk/utils';
 
 import BrandIcon from './brand_icon.svg';
 
@@ -128,6 +128,7 @@ const PASSWORD_REVEAL_MS = 5000;
 const CONFIRM_PHRASE = 'remove sync';
 
 const Home = ({ userContext, environment }: ExtensionContextValue) => {
+  const userId = userContext?.id;
   const accountId = userContext?.account?.id;
   const livemode = environment?.mode === 'live';
   const [status, setStatus] = useState<DbStatusResponse | null>(null);
@@ -144,11 +145,19 @@ const Home = ({ userContext, environment }: ExtensionContextValue) => {
 
   // Fetch status from backend
   const fetchStatus = useCallback(async () => {
-    if (!accountId) return;
+    if (!accountId || !userId) return;
 
     try {
+      // Get Stripe signature for authenticated request
+      const signature = await fetchStripeSignature();
+
       const response = await fetch(
-        `${API_BASE_URL}/api/db/status?account_id=${accountId}&livemode=${livemode}`
+        `${API_BASE_URL}/api/db/status?user_id=${userId}&account_id=${accountId}&livemode=${livemode}`,
+        {
+          headers: {
+            'Stripe-Signature': signature,
+          },
+        }
       );
 
       if (response.status === 401) {
@@ -180,7 +189,7 @@ const Home = ({ userContext, environment }: ExtensionContextValue) => {
     } finally {
       setLoading(false);
     }
-  }, [accountId, livemode, environment?.mode]);
+  }, [accountId, userId, livemode, environment?.mode]);
 
   // Initial fetch
   useEffect(() => {
@@ -231,17 +240,23 @@ const Home = ({ userContext, environment }: ExtensionContextValue) => {
 
   // Handle provision button click
   const handleProvision = async () => {
-    if (!accountId) return;
+    if (!accountId || !userId) return;
 
     setProvisioning(true);
     setError(null);
     setStartTime(Date.now());
 
     try {
+      // Get Stripe signature for authenticated request
+      const signature = await fetchStripeSignature();
+
       const response = await fetch(`${API_BASE_URL}/api/db/provision`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ account_id: accountId, livemode }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Stripe-Signature': signature,
+        },
+        body: JSON.stringify({ user_id: userId, account_id: accountId, livemode }),
       });
 
       if (response.status === 401) {
@@ -276,15 +291,23 @@ const Home = ({ userContext, environment }: ExtensionContextValue) => {
 
   // Handle deprovision
   const handleDeprovision = async () => {
-    if (!accountId) return;
+    if (!accountId || !userId) return;
 
     setDeprovisioning(true);
     setError(null);
 
     try {
+      // Get Stripe signature for authenticated request
+      const signature = await fetchStripeSignature();
+
       const response = await fetch(
-        `${API_BASE_URL}/api/db/provision?account_id=${accountId}&livemode=${livemode}`,
-        { method: 'DELETE' }
+        `${API_BASE_URL}/api/db/provision?user_id=${userId}&account_id=${accountId}&livemode=${livemode}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Stripe-Signature': signature,
+          },
+        }
       );
 
       if (response.status === 401) {

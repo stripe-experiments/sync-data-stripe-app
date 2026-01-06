@@ -3,7 +3,10 @@
  *
  * Returns the provisioning status for a Stripe account's synced database.
  *
- * Route: GET /api/db/status?account_id=acct_xxx&livemode=false
+ * Route: GET /api/db/status?account_id=acct_xxx&user_id=usr_xxx&livemode=false
+ *
+ * Requires Stripe-Signature header for authentication.
+ * The account_id is cryptographically verified via the signature.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -12,6 +15,12 @@ import { getProvisionedDb } from '../../lib/provisioned-db';
 import { decrypt } from '../../lib/crypto';
 import { getConnectionString, tickProvisioning } from '../../lib/supabase-provisioning';
 import type { DbStatusResponse } from '../../lib/provisioning-types';
+import {
+  requireStripeAppSignature,
+  StripeAppSignatureError,
+  redactAccountId,
+  redactUserId,
+} from '../../lib/stripe-app-signature';
 
 function headerValue(req: VercelRequest, name: string): string | undefined {
   const value = req.headers[name.toLowerCase()];
@@ -26,12 +35,6 @@ function requestId(req: VercelRequest): string | undefined {
   );
 }
 
-function redactStripeAccountId(accountId: string): string {
-  if (!accountId) return 'unknown';
-  const suffix = accountId.slice(-6);
-  if (accountId.startsWith('acct_')) return `acct_…${suffix}`;
-  return `…${suffix}`;
-}
 
 /**
  * Handler for database status endpoint
@@ -40,10 +43,10 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ): Promise<void> {
-  // Set CORS headers for Stripe App
+  // Set CORS headers for Stripe App (UI extensions run with null origin)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Stripe-Signature');
 
   // Handle preflight
   if (req.method === 'OPTIONS') {
@@ -59,56 +62,54 @@ export default async function handler(
   }
 
   try {
-    // Extract parameters
-    const accountId = req.query.account_id;
-    const livemodeParam = req.query.livemode;
     const rid = requestId(req);
-    const hasAuthHeader = Boolean(headerValue(req, 'authorization'));
+    const livemodeParam = req.query.livemode;
+    const livemode = livemodeParam === 'true';
 
-    if (!accountId || typeof accountId !== 'string') {
-      console.warn(
-        `[db/status] bad_request ${JSON.stringify({
-          requestId: rid,
-          method: req.method,
-          reason: 'missing_or_invalid_account_id',
-          livemodeParam:
-            typeof livemodeParam === 'string'
-              ? livemodeParam
-              : Array.isArray(livemodeParam)
-                ? livemodeParam[0]
-                : undefined,
-          hasAuthHeader,
-        })}`
-      );
-      res.status(400).json({ error: 'Missing required parameter: account_id' });
-      return;
+    // Verify Stripe App signature and extract verified identifiers
+    // This cryptographically ensures the request is from the signed-in Dashboard user
+    let verified;
+    try {
+      verified = await requireStripeAppSignature(req);
+    } catch (error) {
+      if (error instanceof StripeAppSignatureError) {
+        console.warn(
+          `[db/status] signature_error ${JSON.stringify({
+            requestId: rid,
+            method: req.method,
+            statusCode: error.statusCode,
+            message: error.message,
+          })}`
+        );
+        res.status(error.statusCode).json({
+          error: 'Unauthorized',
+          message: error.message,
+        });
+        return;
+      }
+      throw error;
     }
 
-    const livemode = livemodeParam === 'true';
+    // Use the VERIFIED account_id from the signature (not from client input)
+    const accountId = verified.accountId;
 
     console.log(
       `[db/status] request ${JSON.stringify({
         requestId: rid,
         method: req.method,
-        account: redactStripeAccountId(accountId),
-        livemodeParam:
-          typeof livemodeParam === 'string'
-            ? livemodeParam
-            : Array.isArray(livemodeParam)
-              ? livemodeParam[0]
-              : undefined,
-        livemodeParsed: livemode,
-        hasAuthHeader,
+        user: redactUserId(verified.userId),
+        account: redactAccountId(accountId),
+        livemode,
       })}`
     );
 
-    // Verify OAuth connection
+    // Verify OAuth connection exists for this account
     const auth = await verifyOAuthConnection(accountId, livemode);
     if (!auth.authorized) {
       console.warn(
-        `[db/status] unauthorized ${JSON.stringify({
+        `[db/status] oauth_missing ${JSON.stringify({
           requestId: rid,
-          account: redactStripeAccountId(accountId),
+          account: redactAccountId(accountId),
           requestedLivemode: livemode,
           authError: auth.error,
         })}`
@@ -133,7 +134,7 @@ export default async function handler(
         console.error(
           `[db/status] tick_error ${JSON.stringify({
             requestId: rid,
-            account: redactStripeAccountId(accountId),
+            account: redactAccountId(accountId),
             message: err instanceof Error ? err.message : String(err),
           })}`
         );
