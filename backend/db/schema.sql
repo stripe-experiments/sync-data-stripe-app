@@ -70,6 +70,48 @@ CREATE INDEX IF NOT EXISTS idx_stripe_oauth_connections_account
 ON stripe_oauth_connections(stripe_account_id);
 
 -- ============================================================================
+-- Table: provisioned_databases
+-- Purpose: Track Supabase databases provisioned for each merchant
+-- ============================================================================
+-- One database per Stripe account. Password is encrypted with AES-256-GCM.
+-- Status and step columns track provisioning progress for polling.
+
+CREATE TABLE IF NOT EXISTS provisioned_databases (
+  -- Stripe account ID (acct_xxx) - one DB per merchant
+  stripe_account_id VARCHAR(255) PRIMARY KEY,
+
+  -- Supabase project reference
+  project_ref VARCHAR(255) NOT NULL,
+
+  -- AES-256-GCM encrypted database password
+  db_password_enc TEXT NOT NULL,
+
+  -- Connection details
+  connection_host VARCHAR(255) NOT NULL,
+  region VARCHAR(50) NOT NULL,
+
+  -- Status tracking
+  -- pending | provisioning | installing | syncing | ready | error
+  install_status VARCHAR(50) NOT NULL DEFAULT 'pending',
+
+  -- Fine-grained step within status
+  -- create_project | create_database | wait_database_ready | apply_schema |
+  -- verify_connection | start_sync | verify_sync | done | unknown
+  install_step VARCHAR(50),
+
+  -- Error message if status = 'error'
+  error_message TEXT,
+
+  -- Timestamps
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Index for querying by status (e.g., find all pending/in-progress)
+CREATE INDEX IF NOT EXISTS idx_provisioned_databases_status
+ON provisioned_databases(install_status);
+
+-- ============================================================================
 -- Cleanup Function: Remove expired OAuth states
 -- ============================================================================
 -- Call this periodically (e.g., via cron) to clean up expired states.

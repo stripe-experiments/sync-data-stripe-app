@@ -187,186 +187,281 @@ function isOAuthError(response: StripeTokenResponse | StripeOAuthError): respons
   return false;
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /**
  * Generate success HTML page
  */
 function getSuccessHtml(stripeAccountId: string, livemode: boolean): string {
   const mode = livemode ? 'Live' : 'Test';
   const modeClass = livemode ? 'live' : 'test';
+  const safeStripeAccountId = escapeHtml(stripeAccountId);
   
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Installation Successful</title>
+  <title>Connected — Ready to sync</title>
   <style>
     :root {
-      --success-green: #00d4aa;
-      --text-primary: #1a1f36;
-      --text-secondary: #697386;
+      --accent: #635bff;
+      --accent-hover: #5851db;
+      --accent-soft: rgba(99, 91, 255, 0.12);
+
+      --text: #0a2540;
+      --text-muted: #425466;
+      --bg: #ffffff;
+      --surface: #ffffff;
+      --surface-subtle: #f6f9fc;
+      --border: #e6ebf1;
+
+      --radius-lg: 16px;
+      --radius-md: 8px;
+
+      --shadow: 0 12px 28px rgba(50, 50, 93, 0.08), 0 2px 6px rgba(0, 0, 0, 0.06);
+      --focus-ring: 0 0 0 4px rgba(99, 91, 255, 0.25);
+
+      --success: #00d4aa;
+      --success-soft: rgba(0, 212, 170, 0.12);
+      --success-border: rgba(0, 212, 170, 0.22);
+
+      --warn: #b45309;
+      --warn-soft: rgba(255, 187, 0, 0.16);
+      --warn-border: rgba(255, 187, 0, 0.28);
     }
-    
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #00d4aa 0%, #00b894 100%);
-      min-height: 100vh;
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+        Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+
+    .page {
+      min-height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 24px;
     }
-    
-    .container {
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12);
-      max-width: 480px;
+
+    .card {
       width: 100%;
-      padding: 48px;
-      text-align: center;
+      max-width: 560px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      overflow: hidden;
     }
-    
-    .success-icon {
-      width: 80px;
-      height: 80px;
-      background: var(--success-green);
-      border-radius: 50%;
-      margin: 0 auto 24px;
+
+    .content {
+      padding: 32px;
+    }
+
+    .header {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+
+    .icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--success-soft);
+      border: 1px solid var(--success-border);
       display: flex;
       align-items: center;
       justify-content: center;
+      flex: 0 0 auto;
     }
-    
-    .success-icon svg {
-      width: 40px;
-      height: 40px;
-      stroke: white;
-      stroke-width: 3;
+
+    .icon svg {
+      width: 22px;
+      height: 22px;
+      stroke: var(--success);
+      stroke-width: 2.5;
     }
-    
+
     h1 {
-      color: var(--text-primary);
-      font-size: 28px;
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.25;
       font-weight: 700;
-      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+      color: var(--text);
     }
-    
+
     .subtitle {
-      color: var(--text-secondary);
-      font-size: 16px;
-      line-height: 1.6;
-      margin-bottom: 24px;
+      margin: 6px 0 0;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--text-muted);
     }
-    
+
     .details {
-      background: #f6f9fc;
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 24px;
-      text-align: left;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 14px;
+      margin-top: 18px;
     }
-    
+
     .detail-row {
       display: flex;
       justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px solid #e6ebf1;
+      gap: 14px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
     }
-    
-    .detail-row:last-child {
-      border-bottom: none;
-    }
-    
+
+    .detail-row:last-child { border-bottom: none; }
+
     .detail-label {
-      color: var(--text-secondary);
-      font-size: 14px;
+      color: var(--text-muted);
+      font-size: 13px;
     }
-    
+
     .detail-value {
-      color: var(--text-primary);
-      font-size: 14px;
-      font-weight: 500;
-    }
-    
-    .mode-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
+      color: var(--text);
+      font-size: 13px;
       font-weight: 600;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+      text-align: right;
+      word-break: break-all;
+    }
+
+    .mode-pill {
+      display: inline-block;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+        Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+      font-weight: 800;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      letter-spacing: 0.02em;
       text-transform: uppercase;
     }
-    
-    .mode-badge.live {
-      background: #dcfce7;
-      color: #166534;
+
+    .mode-pill.live {
+      background: var(--success-soft);
+      border: 1px solid var(--success-border);
+      color: #027a63;
     }
-    
-    .mode-badge.test {
-      background: #fef3c7;
-      color: #92400e;
+
+    .mode-pill.test {
+      background: var(--warn-soft);
+      border: 1px solid var(--warn-border);
+      color: var(--warn);
     }
-    
+
+    .actions {
+      margin-top: 18px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
     .btn {
-      display: inline-block;
-      padding: 14px 28px;
-      background: #635bff;
-      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 12px;
+      min-height: 36px;
+      background: var(--accent);
+      border: 1px solid var(--accent);
+      color: #ffffff;
       text-decoration: none;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      transition: all 0.2s ease;
-    }
-    
-    .btn:hover {
-      background: #5851db;
-      transform: translateY(-1px);
-    }
-    
-    .note {
-      margin-top: 24px;
-      color: var(--text-secondary);
+      border-radius: var(--radius-md);
       font-size: 14px;
+      font-weight: 700;
+      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .btn:focus { outline: none; }
+    .btn:focus-visible { box-shadow: var(--focus-ring); }
+
+    .note {
+      margin-top: 14px;
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 480px) {
+      .content { padding: 24px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="success-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
-    </div>
-    
-    <h1>Installation Successful!</h1>
-    <p class="subtitle">
-      Your Stripe account has been connected successfully.
-    </p>
-    
-    <div class="details">
-      <div class="detail-row">
-        <span class="detail-label">Account</span>
-        <span class="detail-value">${stripeAccountId}</span>
+  <div class="page">
+    <div class="card" role="main" aria-label="Installation successful">
+      <div class="content">
+        <div class="header">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <div>
+            <h1>Connected — ready to sync</h1>
+            <p class="subtitle">
+              Next: open Stripe Data Sync in your Dashboard to enable data sync and get your Postgres
+              connection string. Your data will stay up to date automatically.
+            </p>
+          </div>
+        </div>
+
+        <div class="details" aria-label="Connection details">
+          <div class="detail-row">
+            <span class="detail-label">Account</span>
+            <span class="detail-value">${safeStripeAccountId}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Mode</span>
+            <span class="detail-value" style="font-family: inherit; font-weight: 600;">
+              <span class="mode-pill ${modeClass}">${mode}</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="actions">
+          <a class="btn" href="https://dashboard.stripe.com/apps" rel="noopener noreferrer">
+            Open in Stripe Dashboard
+          </a>
+        </div>
+
+        <div class="note">You can now close this window.</div>
       </div>
-      <div class="detail-row">
-        <span class="detail-label">Mode</span>
-        <span class="detail-value">
-          <span class="mode-badge ${modeClass}">${mode}</span>
-        </span>
-      </div>
     </div>
-    
-    <a href="https://dashboard.stripe.com/apps" class="btn">
-      Return to Stripe Dashboard
-    </a>
-    
-    <p class="note">
-      You can now close this window.
-    </p>
   </div>
 </body>
 </html>`;
@@ -376,97 +471,176 @@ function getSuccessHtml(stripeAccountId: string, livemode: boolean): string {
  * Generate error HTML page
  */
 function getErrorHtml(title: string, message: string): string {
+  const safeTitle = escapeHtml(title);
+  const safeMessage = escapeHtml(message);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
+  <title>${safeTitle}</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    
+    :root {
+      --accent: #635bff;
+      --accent-hover: #5851db;
+      --accent-soft: rgba(99, 91, 255, 0.12);
+
+      --text: #0a2540;
+      --text-muted: #425466;
+      --bg: #ffffff;
+      --surface: #ffffff;
+      --border: #e6ebf1;
+
+      --radius-lg: 16px;
+      --radius-md: 8px;
+
+      --shadow: 0 12px 28px rgba(50, 50, 93, 0.08), 0 2px 6px rgba(0, 0, 0, 0.06);
+      --focus-ring: 0 0 0 4px rgba(99, 91, 255, 0.25);
+
+      --danger: #dc2626;
+      --danger-soft: rgba(220, 38, 38, 0.10);
+      --danger-border: rgba(220, 38, 38, 0.18);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f6f9fc;
-      min-height: 100vh;
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+        Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+
+    .page {
+      min-height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 24px;
     }
-    
-    .container {
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      max-width: 480px;
+
+    .card {
       width: 100%;
-      padding: 48px;
-      text-align: center;
+      max-width: 560px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      overflow: hidden;
     }
-    
-    .error-icon {
-      width: 80px;
-      height: 80px;
-      background: #fee2e2;
-      border-radius: 50%;
-      margin: 0 auto 24px;
+
+    .content {
+      padding: 32px;
+    }
+
+    .header {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--danger-soft);
+      border: 1px solid var(--danger-border);
       display: flex;
       align-items: center;
       justify-content: center;
+      flex: 0 0 auto;
     }
-    
-    .error-icon svg {
-      width: 40px;
-      height: 40px;
-      stroke: #dc2626;
+
+    .icon svg {
+      width: 22px;
+      height: 22px;
+      stroke: var(--danger);
       stroke-width: 2;
     }
-    
+
     h1 {
-      color: #dc2626;
-      font-size: 24px;
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.25;
       font-weight: 700;
-      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+      color: var(--text);
     }
-    
+
     .message {
-      color: #697386;
-      font-size: 16px;
-      line-height: 1.6;
-      margin-bottom: 24px;
+      margin: 6px 0 0;
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.55;
     }
-    
+
+    .actions {
+      margin-top: 18px;
+    }
+
     .btn {
-      display: inline-block;
-      padding: 14px 28px;
-      background: #635bff;
-      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 12px;
+      min-height: 36px;
+      background: var(--accent);
+      border: 1px solid var(--accent);
+      color: #ffffff;
       text-decoration: none;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 700;
+      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
     }
-    
+
     .btn:hover {
-      background: #5851db;
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .btn:focus { outline: none; }
+    .btn:focus-visible { box-shadow: var(--focus-ring); }
+
+    @media (max-width: 480px) {
+      .content { padding: 24px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="error-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="15" y1="9" x2="9" y2="15"/>
-        <line x1="9" y1="9" x2="15" y2="15"/>
-      </svg>
+  <div class="page">
+    <div class="card" role="main" aria-label="${safeTitle}">
+      <div class="content">
+        <div class="header">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="15" y1="9" x2="9" y2="15"/>
+              <line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+          </div>
+          <div>
+            <h1>${safeTitle}</h1>
+            <p class="message">${safeMessage}</p>
+          </div>
+        </div>
+
+        <div class="actions">
+          <a href="/install" class="btn">Try again</a>
+        </div>
+      </div>
     </div>
-    
-    <h1>${title}</h1>
-    <p class="message">${message}</p>
-    
-    <a href="/install" class="btn">Try Again</a>
   </div>
 </body>
 </html>`;

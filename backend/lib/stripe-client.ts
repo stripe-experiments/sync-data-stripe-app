@@ -1,8 +1,7 @@
 /**
- * Stripe Client Helper with Token Refresh
- * 
- * Provides a helper function to get a configured Stripe SDK instance
- * for a connected account, automatically refreshing tokens when needed.
+ * Stripe client helper.
+ *
+ * Pulls stored OAuth tokens for a connected account and refreshes when needed.
  */
 
 import Stripe from 'stripe';
@@ -128,27 +127,9 @@ function needsRefresh(expiresAt: Date): boolean {
 }
 
 /**
- * Get a configured Stripe SDK instance for a connected account
- * 
- * This function:
- * 1. Loads the connection from the database
- * 2. Decrypts the access token
- * 3. If the token is expiring soon, refreshes it
- * 4. Returns a configured Stripe SDK instance
- * 
- * @param options - Account ID and mode
- * @returns Configured Stripe client
- * @throws Error if connection not found or refresh fails
- * 
- * @example
- * ```typescript
- * const { client } = await getStripeClient({
- *   stripeAccountId: 'acct_xxx',
- *   livemode: true
- * });
- * 
- * const customers = await client.customers.list({ limit: 10 });
- * ```
+ * Get a Stripe SDK client for a connected account.
+ *
+ * If the access token is close to expiring, we refresh it and store the rotated refresh token.
  */
 export async function getStripeClient(
   options: GetStripeClientOptions
@@ -186,7 +167,7 @@ export async function getStripeClient(
     const newAccessTokenEnc = encrypt(newTokens.access_token);
     const newRefreshTokenEnc = encrypt(newTokens.refresh_token);
     
-    // Update the database (CRITICAL: store the new refresh token!)
+    // Update the DB (refresh tokens rotate, so store the new one).
     await updateConnectionTokens(
       stripeAccountId,
       livemode,
@@ -215,13 +196,7 @@ export async function getStripeClient(
   };
 }
 
-/**
- * Check if a connection exists for an account
- * 
- * @param stripeAccountId - Stripe account ID
- * @param livemode - Whether to check live mode
- * @returns True if connection exists
- */
+/** Quick check: does this account have an OAuth connection for this mode? */
 export async function hasConnection(
   stripeAccountId: string,
   livemode: boolean
@@ -230,13 +205,7 @@ export async function hasConnection(
   return connection !== null;
 }
 
-/**
- * Get connection metadata without the tokens
- * 
- * @param stripeAccountId - Stripe account ID
- * @param livemode - Whether to get live mode connection
- * @returns Connection metadata or null
- */
+/** Get connection metadata (no tokens). */
 export async function getConnectionMetadata(
   stripeAccountId: string,
   livemode: boolean

@@ -1,0 +1,106 @@
+{
+  "allowed_redirect_uris": [
+    "https://sync-app-pearl.vercel.app/api/oauth/callback"
+  ],
+  "connect_permissions": null,
+  "distribution_type": "public",
+  "icon": "./icon.png",
+  "id": "com.example.oauth-sync-app",
+  "name": "Sync my Data",
+  "permissions": [
+    {
+      "permission": "balance_read",
+      "purpose": "Sync balance.available events"
+    },
+    {
+      "permission": "charge_read",
+      "purpose": "Sync charge and refund events"
+    },
+    {
+      "permission": "checkout_session_read",
+      "purpose": "Sync checkout.session events"
+    },
+    {
+      "permission": "credit_note_read",
+      "purpose": "Sync credit_note events"
+    },
+    {
+      "permission": "customer_read",
+      "purpose": "Sync customer events"
+    },
+    {
+      "permission": "dispute_read",
+      "purpose": "Sync charge.dispute events"
+    },
+    {
+      "permission": "entitlement_read",
+      "purpose": "Sync entitlements.active_entitlement_summary events"
+    },
+    {
+      "permission": "invoice_read",
+      "purpose": "Sync invoice events"
+    },
+    {
+      "permission": "payment_intent_read",
+      "purpose": "Sync payment_intent events"
+    },
+    {
+      "permission": "payment_method_read",
+      "purpose": "Sync payment_method events"
+    },
+    {
+      "permission": "plan_read",
+      "purpose": "Sync plan and price events"
+    },
+    {
+      "permission": "product_read",
+      "purpose": "Sync product events"
+    },
+    {
+      "permission": "review_read",
+      "purpose": "Sync review and radar.early_fraud_warning events"
+    },
+    {
+      "permission": "setup_intent_read",
+      "purpose": "Sync setup_intent events"
+    },
+    {
+      "permission": "subscription_read",
+      "purpose": "Sync subscription and subscription_schedule events"
+    },
+    {
+      "permission": "webhook_read",
+      "purpose": "Read webhook endpoint configuration"
+    },
+    {
+      "permission": "webhook_write",
+      "purpose": "Create and manage webhook endpoints"
+    },
+    {
+      "permission": "connected_account_read",
+      "purpose": "Read account information"
+    }
+  ],
+  "post_install_action": {
+    "type": "external",
+    "url": "https://sync-app-pearl.vercel.app/install"
+  },
+  "stripe_api_access_type": "oauth",
+  "ui_extension": {
+    "content_security_policy": {
+      "connect-src": [
+        "https://sync-app-pearl.vercel.app/api/db/status",
+        "https://sync-app-pearl.vercel.app/api/db/provision"
+      ],
+      "image-src": null,
+      "purpose": "Allow API calls to backend for database provisioning"
+    },
+    "views": [
+      {
+        "component": "Home",
+        "viewport": "stripe.dashboard.drawer.default"
+      }
+    ]
+  },
+  "version": "0.0.32"
+}

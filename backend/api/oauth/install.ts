@@ -63,6 +63,177 @@ function getClientId(mode: OAuthMode): string | undefined {
     : process.env.STRIPE_APP_CLIENT_ID_TEST;
 }
 
+function getInstallErrorHtml(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Couldn’t start sync setup</title>
+  <style>
+    :root {
+      --accent: #635bff;
+      --accent-hover: #5851db;
+      --accent-soft: rgba(99, 91, 255, 0.12);
+
+      --text: #0a2540;
+      --text-muted: #425466;
+      --bg: #ffffff;
+      --surface: #ffffff;
+      --border: #e6ebf1;
+
+      --radius-lg: 16px;
+      --radius-md: 8px;
+
+      --shadow: 0 12px 28px rgba(50, 50, 93, 0.08), 0 2px 6px rgba(0, 0, 0, 0.06);
+      --focus-ring: 0 0 0 4px rgba(99, 91, 255, 0.25);
+
+      --danger: #dc2626;
+      --danger-soft: rgba(220, 38, 38, 0.10);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+        Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+
+    .page {
+      min-height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 520px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .content {
+      padding: 32px;
+    }
+
+    .header {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--danger-soft);
+      border: 1px solid rgba(220, 38, 38, 0.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+    }
+
+    .icon svg {
+      width: 22px;
+      height: 22px;
+      stroke: var(--danger);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.25;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+
+    p {
+      margin: 6px 0 0;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--text-muted);
+    }
+
+    .actions {
+      margin-top: 18px;
+    }
+
+    .link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      min-height: 36px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      color: var(--accent);
+      border: 1px solid rgba(99, 91, 255, 0.22);
+      background: rgba(99, 91, 255, 0.06);
+      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .link:hover {
+      border-color: rgba(99, 91, 255, 0.35);
+    }
+
+    .link:focus { outline: none; }
+    .link:focus-visible { box-shadow: var(--focus-ring); }
+
+    @media (max-width: 480px) {
+      .content { padding: 24px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card" role="main" aria-label="Installation Error">
+      <div class="content">
+        <div class="header">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <circle cx="12" cy="16" r="1"></circle>
+            </svg>
+          </div>
+          <div>
+            <h1>Couldn’t start sync setup</h1>
+            <p>We hit an error while starting the connection flow. Please try again.</p>
+          </div>
+        </div>
+
+        <div class="actions">
+          <a class="link" href="/install">← Back to install page</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
 /**
  * Handler for OAuth install initiation
  */
@@ -130,49 +301,8 @@ export default async function handler(
     console.error('OAuth install error:', error);
     
     // Return a user-friendly error page
-    res.status(500).send(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Installation Error</title>
-        <style>
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            background: #f6f9fc;
-          }
-          .error-container {
-            background: white;
-            padding: 48px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            max-width: 400px;
-          }
-          h1 { color: #e53e3e; margin-bottom: 16px; }
-          p { color: #697386; line-height: 1.6; }
-          a {
-            display: inline-block;
-            margin-top: 24px;
-            color: #635bff;
-            text-decoration: none;
-          }
-          a:hover { text-decoration: underline; }
-        </style>
-      </head>
-      <body>
-        <div class="error-container">
-          <h1>Installation Error</h1>
-          <p>We encountered an error while starting the installation process. Please try again.</p>
-          <a href="/install">← Back to Install Page</a>
-        </div>
-      </body>
-      </html>
-    `);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.status(500).send(getInstallErrorHtml());
   }
 }
 

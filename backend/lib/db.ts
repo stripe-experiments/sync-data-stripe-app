@@ -1,7 +1,7 @@
 /**
- * Database helpers for Supabase Postgres
- * 
- * Provides typed wrappers for OAuth state and connection management.
+ * Postgres helpers (central DB).
+ *
+ * OAuth state + token storage live here.
  */
 
 import { Pool } from 'pg';
@@ -32,9 +32,7 @@ function getPool(): Pool {
   return pool;
 }
 
-// ============================================================================
-// OAuth State Management
-// ============================================================================
+// OAuth state
 
 /**
  * Insert a new OAuth state hash with TTL
@@ -95,9 +93,7 @@ export async function cleanupExpiredStates(): Promise<number> {
   return result.rowCount ?? 0;
 }
 
-// ============================================================================
-// OAuth Connection Management
-// ============================================================================
+// OAuth connections
 
 /**
  * Parameters for upserting an OAuth connection

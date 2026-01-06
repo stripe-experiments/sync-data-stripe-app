@@ -1,0 +1,18 @@
+# Environment files (contain secrets)
+.env
+.env.local
+.env.*.local
+
+# Generated SQL with secrets
+sql/*_configured.sql
+
+# Supabase local development
+.supabase/
+
+# Node modules (if any)
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+

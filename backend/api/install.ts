@@ -18,201 +18,265 @@ function getInstallPageHtml(baseUrl: string): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Install Sync Stripe App</title>
+  <title>Sync your Stripe data</title>
+  <link rel="icon" type="image/png" href="/icon.png">
+  <link rel="apple-touch-icon" href="/icon.png">
   <style>
     :root {
-      --stripe-purple: #635bff;
-      --stripe-purple-dark: #5851db;
-      --stripe-green: #00d4aa;
-      --stripe-yellow: #ffbb00;
-      --text-primary: #1a1f36;
-      --text-secondary: #697386;
-      --bg-light: #f6f9fc;
-      --border-color: #e6ebf1;
+      /* Stripe-ish neutrals + accent */
+      --accent: #635bff;
+      --accent-hover: #5851db;
+      --accent-soft: rgba(99, 91, 255, 0.12);
+
+      --text: #0a2540;
+      --text-muted: #425466;
+      --bg: #ffffff;
+      --surface: #ffffff;
+      --surface-subtle: #f6f9fc;
+      --border: #e6ebf1;
+
+      --radius-lg: 16px;
+      --radius-md: 8px;
+
+      --shadow: 0 12px 28px rgba(50, 50, 93, 0.08), 0 2px 6px rgba(0, 0, 0, 0.06);
+      --focus-ring: 0 0 0 4px rgba(99, 91, 255, 0.25);
     }
-    
+
     * {
       box-sizing: border-box;
-      margin: 0;
-      padding: 0;
     }
-    
+
+    html,
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Ubuntu, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+        Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji',
+        sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .page {
+      min-height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 24px;
     }
-    
-    .container {
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12);
-      max-width: 480px;
+
+    .card {
       width: 100%;
-      padding: 48px;
-      text-align: center;
+      max-width: 520px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      overflow: hidden;
     }
-    
-    .logo {
-      width: 64px;
-      height: 64px;
-      background: var(--stripe-purple);
-      border-radius: 16px;
-      margin: 0 auto 24px;
+
+    .content {
+      padding: 36px;
+    }
+
+    .header {
       display: flex;
-      align-items: center;
-      justify-content: center;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 22px;
     }
-    
-    .logo svg {
-      width: 36px;
-      height: 36px;
+
+    .logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      overflow: hidden;
+      flex: 0 0 auto;
     }
-    
+
+    .logo img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+
     h1 {
-      color: var(--text-primary);
-      font-size: 28px;
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.25;
       font-weight: 700;
-      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+      color: var(--text);
     }
-    
+
     .subtitle {
-      color: var(--text-secondary);
-      font-size: 16px;
-      line-height: 1.6;
-      margin-bottom: 32px;
+      margin: 6px 0 0;
+      font-size: 15px;
+      line-height: 1.55;
+      color: var(--text-muted);
     }
-    
+
     .buttons {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 12px;
+      margin-top: 22px;
     }
-    
+
     .btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 12px;
+      min-height: 36px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid transparent;
+      transition: box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-left {
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      padding: 16px 24px;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.2s ease;
-      border: none;
-      cursor: pointer;
+      gap: 10px;
+      min-width: 0;
     }
-    
+
+    .btn:focus {
+      outline: none;
+    }
+
+    .btn:focus-visible {
+      box-shadow: var(--focus-ring);
+    }
+
     .btn-primary {
-      background: var(--stripe-purple);
-      color: white;
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
     }
-    
+
     .btn-primary:hover {
-      background: var(--stripe-purple-dark);
-      transform: translateY(-1px);
-      box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
     }
-    
+
     .btn-secondary {
-      background: var(--bg-light);
-      color: var(--text-primary);
-      border: 1px solid var(--border-color);
+      background: var(--surface);
+      border-color: var(--border);
+      color: var(--text);
     }
-    
+
     .btn-secondary:hover {
-      background: #edf2f7;
-      transform: translateY(-1px);
+      border-color: rgba(99, 91, 255, 0.35);
     }
-    
-    .btn svg {
-      margin-right: 8px;
-    }
-    
-    .mode-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 4px;
+
+    .badge {
+      flex: 0 0 auto;
       font-size: 12px;
-      font-weight: 600;
-      margin-left: 8px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(99, 91, 255, 0.22);
+      background: rgba(99, 91, 255, 0.08);
+      color: var(--accent);
+      letter-spacing: 0.02em;
       text-transform: uppercase;
     }
-    
-    .mode-live {
-      background: #dcfce7;
-      color: #166534;
+
+    .fineprint {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.55;
     }
-    
-    .mode-test {
-      background: #fef3c7;
-      color: #92400e;
-    }
-    
-    .info {
-      margin-top: 32px;
-      padding-top: 24px;
-      border-top: 1px solid var(--border-color);
-    }
-    
-    .info p {
-      color: var(--text-secondary);
-      font-size: 14px;
-      line-height: 1.6;
-    }
-    
-    .info a {
-      color: var(--stripe-purple);
+
+    .fineprint a {
+      color: var(--accent);
       text-decoration: none;
     }
-    
-    .info a:hover {
+
+    .fineprint a:hover {
       text-decoration: underline;
+    }
+
+    @media (max-width: 480px) {
+      .content {
+        padding: 24px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        transition: none !important;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="logo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-        <polyline points="22,6 12,13 2,6"/>
-      </svg>
-    </div>
-    
-    <h1>Connect Your Stripe Account</h1>
-    <p class="subtitle">
-      Install Sync Stripe App to securely connect your Stripe account and enable data synchronization.
-    </p>
-    
-    <div class="buttons">
-      <a href="${baseUrl}/api/oauth/install?mode=live" class="btn btn-primary">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-        </svg>
-        Install for Live Mode
-        <span class="mode-badge mode-live">Live</span>
-      </a>
-      
-      <a href="${baseUrl}/api/oauth/install?mode=test" class="btn btn-secondary">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-        </svg>
-        Install for Test Mode
-        <span class="mode-badge mode-test">Test</span>
-      </a>
-    </div>
-    
-    <div class="info">
-      <p>
-        By installing, you authorize Sync Stripe App to access your Stripe account data.
-        <br><br>
-        <a href="https://stripe.com/docs/stripe-apps" target="_blank" rel="noopener">Learn more about Stripe Apps →</a>
-      </p>
+  <div class="page">
+    <div class="card" role="main" aria-label="Install Sync Stripe App">
+      <div class="content">
+        <div class="header">
+          <div class="logo" aria-hidden="true">
+            <img src="/icon.png" alt="" />
+          </div>
+          <div>
+            <h1>Sync your Stripe data</h1>
+            <p class="subtitle">
+              Keep customers, subscriptions, invoices, and more up to date automatically. When you
+              enable data sync in the app, we’ll create a Postgres database and share a connection
+              string.
+            </p>
+          </div>
+        </div>
+
+        <div class="buttons" aria-label="Choose install mode">
+          <a href="${baseUrl}/api/oauth/install?mode=live" class="btn btn-primary">
+            <span class="btn-left">
+              <span>Sync live data</span>
+            </span>
+            <span class="badge">Live</span>
+          </a>
+
+          <a href="${baseUrl}/api/oauth/install?mode=test" class="btn btn-secondary">
+            <span class="btn-left">
+              <span>Sync test data</span>
+            </span>
+            <span class="badge">Test</span>
+          </a>
+        </div>
+
+        <div class="fineprint">
+          <div>
+            By continuing, you authorize Sync Stripe App to access your Stripe account data and keep
+            it synced automatically.
+          </div>
+          <div style="margin-top: 10px;">
+            <a href="https://stripe.com/docs/stripe-apps" target="_blank" rel="noopener noreferrer">
+              Learn more about Stripe Apps →
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </body>
