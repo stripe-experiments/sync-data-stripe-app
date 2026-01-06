@@ -1,0 +1,26 @@
+{
+  "name": "sync-stripe-app-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vercel Functions backend for Stripe App OAuth",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "tsc",
+    "lint": "eslint . --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.11.0",
+    "stripe": "^14.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.11.0",
+    "@vercel/node": "^3.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
+
