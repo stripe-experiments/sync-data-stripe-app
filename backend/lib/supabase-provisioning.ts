@@ -273,6 +273,8 @@ export async function startProvisioning(
   // Create the Supabase project
   const projectName = `stripe-sync-${stripeAccountId}-${Date.now()}`;
 
+  // TODO: do an idempotency check here to ensure only 1 project per account but the list projects endpoint is not strongly consistent. Figure out how to do this
+
   console.log(`[provisioning] Creating project ${projectName} for ${stripeAccountId}`);
 
   const project = (await supabaseFetch({
@@ -289,6 +291,8 @@ export async function startProvisioning(
   })) as { id: string };
 
   const projectRef = project.id;
+
+  //TODO: is there a way to get the connection host from the Supabase API?
   const connectionHost = `aws-1-${region}.pooler.supabase.com`;
 
   console.log(`[provisioning] Project created: ${projectRef}`);

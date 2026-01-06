@@ -79,6 +79,7 @@ export async function tryWithProvisioningLock<T>(
 export async function getProvisionedDb(
   stripeAccountId: string
 ): Promise<ProvisionedDatabase | null> {
+  // TODO: add live/test mode support
   const result = await getPool().query(
     `SELECT * FROM provisioned_databases WHERE stripe_account_id = $1`,
     [stripeAccountId]
@@ -121,6 +122,7 @@ export async function insertProvisionedDb(
     region,
   } = params;
 
+  // TODO: add live/test mode support
   const result = await getPool().query(
     `INSERT INTO provisioned_databases (
       stripe_account_id,

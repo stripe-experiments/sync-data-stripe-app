@@ -31,8 +31,8 @@ fi
 
 source "$PROJECT_DIR/.env"
 
-if [ -z "$SUPABASE_PROJECT_REF" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-    echo "Error: Missing SUPABASE_PROJECT_REF or SUPABASE_ANON_KEY in .env"
+if [ -z "$SUPABASE_PROJECT_REF" ] || [ -z "$SUPABASE_ANON_KEY" ] || [ -z "$TOKEN_SWEEPER_SECRET" ]; then
+    echo "Error: Missing SUPABASE_PROJECT_REF, SUPABASE_ANON_KEY, or TOKEN_SWEEPER_SECRET in .env"
     exit 1
 fi
 
@@ -62,6 +62,7 @@ RESPONSE=$(curl -s -X POST \
   "${FUNCTION_URL}" \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+  -H "x-token-sweeper-secret: ${TOKEN_SWEEPER_SECRET}" \
   -d "{\"dry_run\": ${DRY_RUN}}")
 
 echo "Response:"
